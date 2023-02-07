@@ -11,32 +11,50 @@ class Prospect: Identifiable, Codable {
     var id = UUID()
     var name = "Anonymous"
     var emailAddress = ""
+    var dateAdded = Date()
     fileprivate(set) var isContacted = false
 }
 
 @MainActor class Prospects: ObservableObject {
     @Published private(set) var people: [Prospect]
-    let saveKey = "SavedKey"
+    let savePath = FileManager.documentsDirectory.appendingPathComponent("SavedProspects")
 
     init() {
-        if let data = UserDefaults.standard.data(forKey: saveKey) {
-            if let decoded = try? JSONDecoder().decode([Prospect].self, from: data) {
-                people = decoded
-                return
-            }
+        do {
+            let data = try Data(contentsOf: savePath)
+             people = try JSONDecoder().decode([Prospect].self, from: data)
+        } catch {
+            people = []
         }
-        
-        people = []
     }
     
     private func save() {
-        if let encoded = try? JSONEncoder().encode(people) {
-            UserDefaults.standard.set(encoded, forKey: saveKey)
+        do {
+            let data = try JSONEncoder().encode(people)
+            try data.write(to: savePath, options: [.atomic, .completeFileProtection])
+        } catch {
+            print("Unable to save data.")
         }
     }
     
     func add(_ prospect: Prospect) {
         people.append(prospect)
+        save()
+    }
+    
+    func sortAlphabetically() {
+        objectWillChange.send()
+        people = people.sorted {
+            $0.name < $1.name
+        }
+        save()
+    }
+    
+    func sortByDateAdded() {
+        objectWillChange.send()
+        people = people.sorted {
+            $0.dateAdded > $1.dateAdded
+        }
         save()
     }
     

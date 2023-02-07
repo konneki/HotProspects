@@ -12,6 +12,7 @@ import SwiftUI
 struct ProspectsView: View {
     @EnvironmentObject var prospects: Prospects
     @State private var isShowingScanner = false
+    @State private var isShowingSorting = false
     
     enum FilterType {
         case none, contacted, uncontacted
@@ -45,11 +46,18 @@ struct ProspectsView: View {
         NavigationView {
             List {
                 ForEach(filteredProspects) { prospect in
-                    VStack(alignment: .leading) {
-                        Text(prospect.name)
-                            .font(.headline)
-                        Text(prospect.emailAddress)
-                            .foregroundColor(.secondary)
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(prospect.name)
+                                .font(.headline)
+                            Text(prospect.emailAddress)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        
+                        if prospect.isContacted {
+                            Image(systemName: "person.crop.circle.fill.badge.checkmark")
+                        }
                     }
                     .swipeActions {
                         if prospect.isContacted {
@@ -74,19 +82,40 @@ struct ProspectsView: View {
                             }
                             .tint(.orange)
                         }
-                    }
+                }
                 }
             }
                 .navigationTitle(title)
                 .toolbar {
-                    Button {
-                        isShowingScanner = true
-                    } label: {
-                        Label("Scan", systemImage: "qrcode.viewfinder")
+                    ToolbarItemGroup {
+                        Button {
+                            isShowingSorting = true
+                        } label: {
+                            Label("Sort", systemImage: "chart.bar.doc.horizontal")
+                        }
+                        
+                        Button {
+                            isShowingScanner = true
+                        } label: {
+                            Label("Scan", systemImage: "qrcode.viewfinder")
+                        }
                     }
                 }
                 .sheet(isPresented: $isShowingScanner) {
                     CodeScannerView(codeTypes: [.qr], simulatedData: "Oliwia Nowak\noliwia_nowak@icloud.com", completion: handleScan)
+                }
+                .confirmationDialog("Choose sorting method", isPresented: $isShowingSorting) {
+                    Button("Alphabetically") {
+                        prospects.sortAlphabetically()
+                    }
+                    
+                    Button("Date added") {
+                        prospects.sortByDateAdded()
+                    }
+                    
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Choose sorting method")
                 }
         }
     }
@@ -103,6 +132,7 @@ struct ProspectsView: View {
             person.name = details[0]
             person.emailAddress = details[1]
             prospects.add(person)
+            
         case .failure(let error):
             print("Scanning failed with error: \(error.localizedDescription)")
         }
